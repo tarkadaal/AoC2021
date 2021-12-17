@@ -5,8 +5,21 @@ DOWN = "down"
 UP = "up"
 
 NavCommand = namedtuple("NavCommand", ["direction", "distance"])
-Location = namedtuple("Location", ["depth", "length"])
-Navigation = namedtuple("Navigation", ["location", "aim"])
+
+
+class Location:
+    def __init__(self, depth=0, length=0):
+        self.depth = depth
+        self.length = length
+
+    def total_distance(self):
+        return self.length * self.depth
+
+
+class Navigation(Location):
+    def __init__(self, depth=0, length=0, aim=0):
+        super().__init__(depth, length)
+        self.aim = aim
 
 
 def split_data_into_commands(data):
@@ -16,34 +29,39 @@ def split_data_into_commands(data):
     ]
 
 
-def solve_part_1(data):
-    commands = split_data_into_commands(data)
-    funcs = {}
-    funcs["forward"] = lambda x, y: Location(y.depth, y.length + x)
-    funcs["down"] = lambda x, y: Location(y.depth + x, y.length)
-    funcs["up"] = lambda x, y: Location(y.depth - x, y.length)
-
-    location = Location(0, 0)
+def process_commands(commands, functions, start_state):
+    state = start_state
     for command in commands:
-        location = funcs[command.direction](command.distance, location)
+        state = functions[command.direction](command.distance, state)
 
-    return location.depth * location.length
+    return state
+
+
+def split_and_process(data, functions, start_state):
+    commands = split_data_into_commands(data)
+    return process_commands(commands, functions, start_state)
+
+
+def solve_part_1(data):
+    funcs = {}
+    funcs[FORWARD] = lambda x, y: Location(y.depth, y.length + x)
+    funcs[DOWN] = lambda x, y: Location(y.depth + x, y.length)
+    funcs[UP] = lambda x, y: Location(y.depth - x, y.length)
+
+    start_state = Location()
+    result = split_and_process(data, funcs, start_state)
+    return result.total_distance()
 
 
 def solve_part_2(data):
-    commands = split_data_into_commands(data)
     funcs = {}
-    funcs["forward"] = lambda x, y: Navigation(
-        Location(y.location.depth + y.aim * x, y.location.length + x), y.aim
-    )
-    funcs["down"] = lambda x, y: Navigation(y.location, y.aim + x)
-    funcs["up"] = lambda x, y: Navigation(y.location, y.aim - x)
+    funcs[FORWARD] = lambda x, y: Navigation(y.depth + y.aim * x, y.length + x, y.aim)
+    funcs[DOWN] = lambda x, y: Navigation(y.depth, y.length, y.aim + x)
+    funcs[UP] = lambda x, y: Navigation(y.depth, y.length, y.aim - x)
 
-    navigation = Navigation(Location(0, 0), 0)
-    for command in commands:
-        navigation = funcs[command.direction](command.distance, navigation)
-
-    return navigation.location.depth * navigation.location.length
+    start_state = Navigation()
+    result = split_and_process(data, funcs, start_state)
+    return result.total_distance()
 
 
 if __name__ == "__main__":
